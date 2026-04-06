@@ -53,7 +53,7 @@ def run_single_simulation(sim_id, num_uavs, use_collapse):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', type=str, default='false', choices=['true', 'false'])
+    parser.add_argument('--save', type=str, default='true', choices=['true', 'false'])
     parser.add_argument('--collapse', type=str, default='true', choices=['true', 'false'])
     args = parser.parse_args()
     save_plots = (args.save.lower() == 'true')
@@ -62,15 +62,18 @@ def main():
     print("\n" + "=" * 40)
     print(f"计算 {config.UAV_COUNT} 架无人机的平均捕获时间")
     print(f"步长 {config.DT_MINUTES} min, 蒙特卡洛次数 {config.MC_SIMULATIONS}")
-    print(f"目标分布: {config.TARGET_INIT_MODE} | 信任度崩塌: {'开启' if use_collapse else '禁用'}")
+    print(f"目标运动：{config.TARGET_TRUE_MOTION} | 目标分布: {config.TARGET_INIT_MODE} | 信任度崩塌: {'开启' if use_collapse else '禁用'} | 底噪: {config.ENTROPY_INJECTION_RATE}")
     print("=" * 40 + "\n")
 
     exp_dir = None
 
     if save_plots:
         mode_str = config.TARGET_INIT_MODE
-        collapse_str = "collapse_on" if use_collapse else "collapse_off"
-        sub_path = f"{mode_str}_{collapse_str}"
+        motion_str = config.TARGET_TRUE_MOTION
+        collapse_str = "collapse" if use_collapse else ""
+        entropy_str = "entropy" if config.ENTROPY_INJECTION_RATE != 0 else ""
+        if mode_str == 'uniform': collapse_str = ""
+        sub_path = f"{mode_str}_{motion_str}_{collapse_str}_{entropy_str}"
 
         base_dir = os.path.join(BASE_DIR, "data", "search_time", sub_path)
         os.makedirs(base_dir, exist_ok=True)

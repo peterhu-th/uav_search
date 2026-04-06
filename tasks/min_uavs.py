@@ -80,23 +80,26 @@ def test_uav_count(num_uavs, save_plots, use_collapse, exp_dir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', type=str, default='false', choices=['true', 'false'])
+    parser.add_argument('--save', type=str, default='true', choices=['true', 'false'])
     parser.add_argument('--collapse', type=str, default='true', choices=['true', 'false'])
     args = parser.parse_args()
     save_plots = (args.save.lower() == 'true')
     use_collapse = (args.collapse.lower() == 'true')
 
     print("\n" + "=" * 40)
-    print(f"求解最少无人机数量")
-    print(f"目标分布: {config.TARGET_INIT_MODE} | 信任度崩塌: {'开启' if use_collapse else '关闭'}")
+    print(f"求最少无人机数量")
+    print(f"目标运动：{config.TARGET_TRUE_MOTION} | 目标分布: {config.TARGET_INIT_MODE} | 信任度崩塌: {'开启' if use_collapse else '禁用'}")
     print("=" * 40 + "\n")
 
     exp_dir = None
 
     if save_plots:
         mode_str = config.TARGET_INIT_MODE
-        collapse_str = "collapse_on" if use_collapse else "collapse_off"
-        sub_path = f"{mode_str}_{collapse_str}"
+        motion_str = config.TARGET_TRUE_MOTION
+        collapse_str = "collapse" if use_collapse else ""
+        entropy_str = "entropy" if config.ENTROPY_INJECTION_RATE != 0 else ""
+        if mode_str == 'uniform': collapse_str = ""
+        sub_path = f"{mode_str}_{motion_str}_{collapse_str}_{entropy_str}"
 
         base_dir = os.path.join(BASE_DIR, "data", "min_uavs", sub_path)
         os.makedirs(base_dir, exist_ok=True)

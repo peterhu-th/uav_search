@@ -154,6 +154,16 @@ class Environment:
             self.prob_map, config.GRID_W, config.GRID_H,
             ctypes.c_float(config.GAUSSIAN_SIGMA), ctypes.c_float(config.PRUNE_THRESHOLD)
         )
+        if hasattr(config, 'ENTROPY_INJECTION_RATE') and config.ENTROPY_INJECTION_RATE > 0:
+            alpha = config.ENTROPY_INJECTION_RATE
+
+            # 计算均匀底噪
+            uniform_noise = alpha / config.TOTAL_GRIDS
+
+            # P_new = P_old * (1 - alpha) + 均匀底噪
+            self.prob_map = self.prob_map * (1.0 - alpha) + uniform_noise
+            self.prob_map = (self.prob_map / np.sum(self.prob_map)).astype(np.float32)
+            self.prob_map = np.ascontiguousarray(self.prob_map, dtype=np.float32)
 
     def measurement_update_bayes(self, uav_xs, uav_ys):
         """调用 C++ 进行雷达扫描区域的概率降温"""
