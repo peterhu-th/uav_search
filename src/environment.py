@@ -12,11 +12,12 @@ if os.path.join(BASE_DIR, 'config') not in sys.path:
     sys.path.append(os.path.join(BASE_DIR, 'config'))
 import config
 
+
 class Environment:
     def __init__(self):
         # 初始化 1D 概率网格
         self.prob_map = np.zeros(config.TOTAL_GRIDS, dtype=np.float32)
-        
+
         # 加载 C++ DLL
         current_file_path = os.path.abspath(__file__)
         src_dir = os.path.dirname(current_file_path)
@@ -33,14 +34,14 @@ class Environment:
 
         # 定义 C++ 函数的参数类型
         float_array_1d = np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS')
-        
+
         self.lib.time_update.argtypes = [
             float_array_1d, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_float
         ]
-        
+
         self.lib.measurement_update.argtypes = [
-            float_array_1d, ctypes.c_int, ctypes.c_int, 
-            float_array_1d, float_array_1d, ctypes.c_int, 
+            float_array_1d, ctypes.c_int, ctypes.c_int,
+            float_array_1d, float_array_1d, ctypes.c_int,
             ctypes.c_float, ctypes.c_float
         ]
 
@@ -49,6 +50,12 @@ class Environment:
         self.true_target_y = 0.0
         self.target_vx = 0.0
         self.target_vy = 0.0
+
+        self.prior_center = (0, 0)
+        self.center_reached = False
+        self.collapse_counter = 0
+        self.has_collapsed = False
+
         self._init_target()
 
     def _init_target(self):
@@ -56,6 +63,9 @@ class Environment:
         if config.TARGET_INIT_MODE == 'gaussian':
             prior_center_x = np.random.uniform(0, config.GRID_W)
             prior_center_y = np.random.uniform(0, config.GRID_H)
+            # 记录随机生成的先验中心
+            self.prior_center = (prior_center_x, prior_center_y)
+
             # 定义先验情报的误差范围 (初始分布的标准差)
             init_sigma = config.GRID_W / 6.0
 
@@ -71,32 +81,31 @@ class Environment:
             # 计算二维高斯分布
             prob_map = np.exp(-((X - prior_center_x) ** 2 + (Y - prior_center_y) ** 2) / (2 * init_sigma ** 2))
             self.prob_map = (prob_map / np.sum(prob_map)).flatten()
-            self.prob_map = self.prob_map.astype(np.float32)
         else:
             # Uniform 完全未知
             self.true_target_x = np.random.uniform(0, config.GRID_W)
             self.true_target_y = np.random.uniform(0, config.GRID_H)
             self.prob_map.fill(1.0)
-            
-        # 归一化
-        self.prob_map /= np.sum(self.prob_map)
+
+        self.prob_map = (self.prob_map / np.sum(self.prob_map)).astype(np.float32)
+        self.prob_map = np.ascontiguousarray(self.prob_map, dtype=np.float32)
 
     def move_true_target(self, uav_xs=None, uav_ys=None):
         """控制上帝视角的真实目标机动"""
-        speed = config.TARGET_STEP_DIST_KM / config.GRID_RES_KM # 每步移动的网格数
-        
+        speed = config.TARGET_STEP_DIST_KM / config.GRID_RES_KM  # 每步移动的网格数
+
         if config.TARGET_TRUE_MOTION == 'random':
             angle = np.random.uniform(0, 2 * math.pi)
             self.target_vx = speed * math.cos(angle)
             self.target_vy = speed * math.sin(angle)
-            
+
         elif config.TARGET_TRUE_MOTION == 'straight':
             # 保持初始的随机方向
             if self.target_vx == 0 and self.target_vy == 0:
                 angle = np.random.uniform(0, 2 * math.pi)
                 self.target_vx = speed * math.cos(angle)
                 self.target_vy = speed * math.sin(angle)
-                
+
         elif config.TARGET_TRUE_MOTION == 'evasive' and uav_xs is not None and len(uav_xs) > 0:
             # 躲避最近的无人机
             min_dist = float('inf')
@@ -106,7 +115,7 @@ class Environment:
                 if dist < min_dist:
                     min_dist = dist
                     nearest_uav_idx = i
-            
+
             # 如果无人机在 100 km 内 (33个网格)，开始逃逸
             if min_dist < (100.0 / config.GRID_RES_KM):
                 dx = self.true_target_x - uav_xs[nearest_uav_idx]
@@ -142,7 +151,7 @@ class Environment:
     def time_update_bayes(self):
         """调用 C++ 进行马尔可夫高斯扩散"""
         self.lib.time_update(
-            self.prob_map, config.GRID_W, config.GRID_H, 
+            self.prob_map, config.GRID_W, config.GRID_H,
             ctypes.c_float(config.GAUSSIAN_SIGMA), ctypes.c_float(config.PRUNE_THRESHOLD)
         )
 
@@ -151,15 +160,41 @@ class Environment:
         num_uavs = len(uav_xs)
         if num_uavs == 0:
             return
-        
+
         ux_arr = np.array(uav_xs, dtype=np.float32)
         uy_arr = np.array(uav_ys, dtype=np.float32)
-        
+
         self.lib.measurement_update(
             self.prob_map, config.GRID_W, config.GRID_H,
-            ux_arr, uy_arr, ctypes.c_int(num_uavs), 
+            ux_arr, uy_arr, ctypes.c_int(num_uavs),
             ctypes.c_float(config.RADAR_RADIUS_GRIDS), ctypes.c_float(config.PROB_DETECT)
         )
+
+    def apply_confidence_collapse(self, uav_xs, uav_ys):
+        """检测触发条件并执行崩塌"""
+        if config.TARGET_INIT_MODE != 'gaussian' or self.has_collapsed:
+            return
+
+        # 检测是否经过中心点
+        if not self.center_reached:
+            for ux, uy in zip(uav_xs, uav_ys):
+                dist = math.hypot(ux - self.prior_center[0], uy - self.prior_center[1])
+                if dist < config.COLLAPSE_TRIGGER_DIST:
+                    self.center_reached = True
+                    break
+
+        if self.center_reached and not self.has_collapsed:
+            self.collapse_counter += 1
+
+            # 执行崩塌
+            if self.collapse_counter >= config.COLLAPSE_DELAY_STEPS:
+                # P = P ^ factor
+                self.prob_map = np.power(self.prob_map, config.COLLAPSE_FACTOR)
+
+                self.prob_map = (self.prob_map / np.sum(self.prob_map)).astype(np.float32)
+                self.prob_map = np.ascontiguousarray(self.prob_map, dtype=np.float32)
+
+                self.has_collapsed = True
 
     def check_capture(self, uav_xs, uav_ys):
         """判定真实目标是否被任何一架无人机捕获"""

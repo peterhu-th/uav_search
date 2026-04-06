@@ -15,7 +15,12 @@ from environment import Environment
 from uav_controller import UAVFleet
 
 def main():
+
+    print("\n" + "=" * 40)
     print(">>> 启动任务一仿真演示 <<<")
+    print(f"目标初始分布模式: {config.TARGET_INIT_MODE}")
+    print(f"信任度崩塌机制: 启用 (仅在 gaussian 模式下生效)")
+    print("=" * 40 + "\n")
 
     env = Environment()
     fleet = UAVFleet(num_uavs=2)
@@ -28,7 +33,6 @@ def main():
     max_steps = 200
 
     while step < max_steps:
-        # ---- 核心业务逻辑 ----
         # 概率热力图随时间扩散
         env.time_update_bayes()
 
@@ -38,20 +42,17 @@ def main():
 
         # 无人机根据热力图计算势场并移动
         fleet.calculate_apf_and_move(env.prob_map)
-
-        # 无人机到达新位置，雷达扫描
+        env.apply_confidence_collapse(uxs, uys)
         uxs, uys = fleet.get_positions()
         env.measurement_update_bayes(uxs, uys)
 
-        # 判断是否成功抓捕
+        # 抓捕判断
         if env.check_capture(uxs, uys):
             print(f"\n目标在第 {step} 步被成功捕获！")
             break
 
-        # ---- 可视化渲染逻辑 ----
+        # 可视化渲染
         ax.clear()
-
-        # 将 1D 的内存数组 reshape 成 2D 用于画图
         prob_map_2d = env.prob_map.reshape((config.GRID_H, config.GRID_W))
 
         # 绘制热力底图
@@ -59,7 +60,7 @@ def main():
                        extent=[0, config.GRID_W, 0, config.GRID_H],
                        vmin=0, vmax=np.max(prob_map_2d) + 1e-9)
 
-        # 绘制上帝视角下的真实目标
+        # 绘制真实目标
         if len(target_history) > 1:
             tx, ty = zip(*target_history)
             ax.plot(tx, ty, color='red', linestyle=':', linewidth=2, label='Target Trajectory', zorder=4)
@@ -69,8 +70,8 @@ def main():
         colors = ['cyan', 'magenta', 'lime']
         for i in range(fleet.num_uavs):
             c = colors[i % len(colors)]
-            # 无人机当前位置 (三角形)
             ax.scatter(uxs[i], uys[i], c=c, marker='^', s=100, edgecolors='black', zorder=4)
+
             # 历史轨迹线
             if len(fleet.history[i]) > 1:
                 hx, hy = zip(*fleet.history[i])
@@ -80,17 +81,15 @@ def main():
                                 color=c, fill=False, linestyle='--', linewidth=1.5, zorder=4)
             ax.add_patch(circle)
 
-        ax.set_title(f"Task 1: Bayesian Heatmap Search - Step {step}")
+        ax.set_title(f"Bayesian Heatmap Search - Step {step}")
         ax.set_xlabel("Grid X")
         ax.set_ylabel("Grid Y")
         ax.legend(loc='upper right')
 
-        # 暂停极短时间以刷新画面
         plt.pause(0.01)
         step += 1
 
     plt.ioff()
-    print(">>> 演示结束 <<<")
     plt.show()
 
 
