@@ -59,7 +59,7 @@ COLLAPSE_FACTOR = 0.3           # 崩塌系数
 
 
 # ----------------- 蒙特卡洛仿真参数 -----------------
-MC_SIMULATIONS = 10             # 每次测试运行的蒙特卡洛仿真次数
+MC_SIMULATIONS = 20             # 每次测试运行的蒙特卡洛仿真次数
 MAX_SIMULATION_HOURS = 100.0    # 任务二:最大允许搜索时间
 TASK2_UAV_COUNT = 2             # 任务二:测试的无人机数量
 TASK3_TIME_LIMIT_HOURS = 7.7   # 任务三:时间约束

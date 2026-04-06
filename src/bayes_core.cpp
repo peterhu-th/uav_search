@@ -1,7 +1,5 @@
 // ==========================================
 // bayes_core.cpp - 贝叶斯热力图底层计算引擎
-// 编译命令 (Windows): g++ -shared -o bayes_core.dll bayes_core.cpp -O3
-// 编译命令 (Linux/Mac): g++ -shared -fPIC -o bayes_core.so bayes_core.cpp -O3
 // ==========================================
 #include <vector>
 #include <cmath>
@@ -15,7 +13,7 @@ extern "C" {
         #define EXPORT
     #endif
 
-    // --- 内部辅助函数：计算全反射边界后的坐标 ---
+    // 计算全反射边界后的坐标
     inline int get_reflected_coord(int coord, int max_val) {
         if (coord < 0) {
             return -coord; 
