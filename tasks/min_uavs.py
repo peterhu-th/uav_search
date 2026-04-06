@@ -81,7 +81,7 @@ def test_uav_count(num_uavs, save_plots, use_collapse, exp_dir):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--save', type=str, default='true', choices=['true', 'false'])
-    parser.add_argument('--collapse', type=str, default='true', choices=['true', 'false'])
+    parser.add_argument('--collapse', type=str, default='false', choices=['true', 'false'])
     args = parser.parse_args()
     save_plots = (args.save.lower() == 'true')
     use_collapse = (args.collapse.lower() == 'true')
