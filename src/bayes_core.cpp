@@ -24,18 +24,17 @@ extern "C" {
     }
 
     // ==========================================
-    // 功能1：时间更新（高斯核概率扩散与全反射）
+    // 时间更新（高斯核概率扩散与全反射）
     // ==========================================
     EXPORT void time_update(float* prob_map, int width, int height, float sigma, float prune_threshold) {
         int total_grids = width * height;
-        // 1. 开辟一个干净的临时缓冲区，防止污染马尔可夫链
+        // 开辟缓冲区
         std::vector<float> temp_map(total_grids, 0.0f);
-        
-        // 预计算高斯核窗口大小 (取 3 倍 sigma 即可覆盖 99% 的概率)
+
         int kernel_radius = std::ceil(3.0f * sigma);
         if (kernel_radius < 1) kernel_radius = 1;
 
-        // 2. 遍历全图
+        // 遍历全图
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 int idx = y * width + x;
@@ -55,7 +54,6 @@ extern "C" {
                 for (int dy = -kernel_radius; dy <= kernel_radius; ++dy) {
                     for (int dx = -kernel_radius; dx <= kernel_radius; ++dx) {
                         float dist_sq = dx * dx + dy * dy;
-                        // 高斯函数 exp(-d^2 / (2 * sigma^2))
                         float weight = std::exp(-dist_sq / (2.0f * sigma * sigma));
                         local_weights.push_back(weight);
                         sum_weights += weight;
@@ -93,7 +91,7 @@ extern "C" {
 
 
     // ==========================================
-    // 功能2：观测更新（雷达区域冷却）
+    // 观测更新（雷达区域冷却）
     // ==========================================
     EXPORT void measurement_update(float* prob_map, int width, int height, 
                                    float* uav_x, float* uav_y, int num_uavs, 
@@ -117,7 +115,7 @@ extern "C" {
                 for (int x = min_x; x <= max_x; ++x) {
                     float dist_sq = (x - uav_x[k]) * (x - uav_x[k]) + (y - uav_y[k]) * (y - uav_y[k]);
                     
-                    // 如果在雷达无盲区范围内，未发现目标，概率锐减 (乘以 1 - p_d)
+                    // 如果范围内未发现目标，概率锐减 (乘以 1 - p_d)
                     if (dist_sq <= radar_radius_sq) {
                         int idx = y * width + x;
                         prob_map[idx] *= (1.0f - p_d);

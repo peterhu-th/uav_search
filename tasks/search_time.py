@@ -4,7 +4,6 @@
 import os
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
 import argparse
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,6 +12,7 @@ sys.path.append(os.path.join(BASE_DIR, 'src'))
 import config
 from environment import Environment
 from uav_controller import UAVFleet
+from plot_utils import plot_trajectory
 
 
 def run_single_simulation(sim_id, num_uavs, use_collapse):
@@ -33,7 +33,6 @@ def run_single_simulation(sim_id, num_uavs, use_collapse):
         env.move_true_target(uxs, uys)
         fleet.calculate_apf_and_move(env.prob_map)
 
-        # 【修复】使用布尔值判断
         if use_collapse:
             env.apply_confidence_collapse(uxs, uys)
 
@@ -52,40 +51,6 @@ def run_single_simulation(sim_id, num_uavs, use_collapse):
     return max_steps * config.DT_HOURS, fleet.history, target_history, env.prob_map.copy(), False
 
 
-def plot_trajectory(fleet_history, target_history, prob_map, title, save_path=None):
-    """绘制全局静态轨迹汇总图"""
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    prob_map_2d = prob_map.reshape((config.GRID_H, config.GRID_W))
-    im = ax.imshow(prob_map_2d, cmap='jet', origin='lower',
-                   extent=[0, config.GRID_W, 0, config.GRID_H],
-                   vmin=0, vmax=np.max(prob_map_2d) + 1e-9)
-
-    tx, ty = zip(*target_history)
-    ax.plot(tx, ty, color='red', linestyle=':', linewidth=2, label='Target Trajectory', zorder=4)
-    ax.scatter(tx[0], ty[0], c='white', marker='o', s=80, edgecolors='red', label='Target Start')
-    ax.scatter(tx[-1], ty[-1], c='red', marker='*', s=200, label='Target Caught', zorder=5)
-
-    colors = ['cyan', 'magenta', 'lime', 'yellow', 'orange', 'pink', 'white', 'lightgreen']
-    for i, h in enumerate(fleet_history):
-        c = colors[i % len(colors)]
-        hx, hy = zip(*h)
-        ax.plot(hx, hy, color=c, linestyle='-', linewidth=1.5, alpha=0.8)
-        ax.scatter(hx[0], hy[0], c=c, marker='s', s=50, edgecolors='black')
-        ax.scatter(hx[-1], hy[-1], c=c, marker='^', s=100, edgecolors='black', zorder=4)
-
-    ax.set_title(title)
-    ax.set_xlabel("Grid X")
-    ax.set_ylabel("Grid Y")
-    ax.legend(loc='upper right')
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        plt.close(fig)
-    else:
-        plt.show()
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--save', type=str, default='false', choices=['true', 'false'])
@@ -95,7 +60,7 @@ def main():
     use_collapse = (args.collapse.lower() == 'true')
 
     print("\n" + "=" * 40)
-    print(f"计算 {config.TASK2_UAV_COUNT} 架无人机的平均捕获时间")
+    print(f"计算 {config.UAV_COUNT} 架无人机的平均捕获时间")
     print(f"步长 {config.DT_MINUTES} min, 蒙特卡洛次数 {config.MC_SIMULATIONS}")
     print(f"目标分布: {config.TARGET_INIT_MODE} | 信任度崩塌: {'开启' if use_collapse else '禁用'}")
     print("=" * 40 + "\n")
@@ -122,13 +87,13 @@ def main():
     longest_record = None
 
     for i in range(config.MC_SIMULATIONS):
-        time_spent, f_hist, t_hist, p_map, success = run_single_simulation(i, config.TASK2_UAV_COUNT, use_collapse)
+        time_spent, f_hist, t_hist, p_map, success = run_single_simulation(i, config.UAV_COUNT, use_collapse)
 
         if save_plots and exp_dir:
             save_path = os.path.join(exp_dir, f"sim_{i}.png")
             status_str = "成功" if success else "超时"
-            plot_title = f"Task 2: Sim={i} [{status_str}]"
-            plot_trajectory(f_hist, t_hist, p_map, plot_title, save_path=save_path)
+            plot_title = f"Sim={i} [{status_str}]"
+            plot_trajectory(f_hist, t_hist, p_map, plot_title, save_path=save_path, is_caught=success)
 
         if success:
             successful_times.append(time_spent)
@@ -144,13 +109,13 @@ def main():
         print(f"最终结果:")
         print(f"成功率:   {success_rate:.1f}%")
         print(f"平均耗时: {avg_time:.2f} h (标准差: {std_time:.2f} h)")
-        print(f"平均总耗时: {avg_time + 2.3:.2f} h")
+        print(f"平均总耗时: {avg_time + config.ARRIVAL_TIME_HOURS:.2f} h")
         print("=" * 40 + "\n")
 
         if longest_record is not None:
             print(f"渲染耗时最长 ({longest_time:.2f} h) 的轨迹...")
             plot_trajectory(longest_record[0], longest_record[1], longest_record[2],
-                            f"Task 2: Longest Successful Search ({longest_time:.2f} h)")
+                            f"Longest Successful Search ({longest_time:.2f} h)", is_caught=True)
     else:
         print("\n所有仿真均超时，未能计算出平均时间")
 

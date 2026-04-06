@@ -7,16 +7,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
-# 【已删除导致命名冲突的 from more_itertools.more import collapse】
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(BASE_DIR, 'config'))
 sys.path.append(os.path.join(BASE_DIR, 'src'))
-
 import config
 from environment import Environment
 from uav_controller import UAVFleet
-
+from plot_utils import plot_trajectory
 
 def test_uav_count(num_uavs, save_plots, use_collapse, exp_dir):
     """测试特定无人机数量，返回 (成功率, 失败的轨迹记录)"""
@@ -24,7 +21,7 @@ def test_uav_count(num_uavs, save_plots, use_collapse, exp_dir):
 
     success_count = 0
     successful_times = []
-    max_steps = int(config.TASK3_TIME_LIMIT_HOURS / config.DT_HOURS)
+    max_steps = int(config.TIME_LIMIT_HOURS / config.DT_HOURS)
     failed_record = None
 
     for i in range(config.MC_SIMULATIONS):
@@ -66,11 +63,11 @@ def test_uav_count(num_uavs, save_plots, use_collapse, exp_dir):
         if not captured and failed_record is None:
             target_history.append((env.true_target_x, env.true_target_y))
             failed_record = (fleet.history, target_history, env.prob_map.copy())
-
         if save_plots and exp_dir:
-            save_path = os.path.join(exp_dir, f"N_{num_uavs}_sim_{i}.png")
-            plot_title = f"Task 3: N={num_uavs} Sim={i} [{status}]"
-            plot_trajectory(fleet.history, target_history, env.prob_map.copy(), plot_title, save_path=save_path)
+            save_path = os.path.join(exp_dir, f"N_{num_uavs}", f"sim_{i}.png")
+            plot_title = f"N={num_uavs} Sim={i} [{status}]"
+            plot_trajectory(fleet.history, target_history, env.prob_map.copy(),
+                            plot_title, save_path=save_path, is_caught=captured)
 
     current_success_rate = success_count / config.MC_SIMULATIONS
     print(f"N = {num_uavs} 架限时成功率: {current_success_rate * 100:.1f}%")
@@ -79,37 +76,6 @@ def test_uav_count(num_uavs, save_plots, use_collapse, exp_dir):
     if successful_times:
         print(f"成功捕获平均耗时: {avg_time:.2f} h (标准差: {std_time:.2f} h)")
     return current_success_rate, failed_record, avg_time, std_time
-
-
-def plot_trajectory(fleet_history, target_history, prob_map, title, save_path=None):
-    """绘制全局静态轨迹汇总图 (复用逻辑)"""
-    fig, ax = plt.subplots(figsize=(10, 8))
-    prob_map_2d = prob_map.reshape((config.GRID_H, config.GRID_W))
-    im = ax.imshow(prob_map_2d, cmap='jet', origin='lower', extent=[0, config.GRID_W, 0, config.GRID_H], vmin=0,
-                   vmax=np.max(prob_map_2d) + 1e-9)
-
-    tx, ty = zip(*target_history)
-    ax.plot(tx, ty, color='red', linestyle=':', linewidth=2, label='Target Trajectory', zorder=4)
-    ax.scatter(tx[-1], ty[-1], c='red', marker='X', s=200, label='Target Escaped', zorder=5)
-
-    colors = ['cyan', 'magenta', 'lime', 'yellow', 'orange', 'pink', 'white', 'lightgreen']
-    for i, h in enumerate(fleet_history):
-        c = colors[i % len(colors)]
-        hx, hy = zip(*h)
-        ax.plot(hx, hy, color=c, linestyle='-', linewidth=1.5, alpha=0.8)
-        ax.scatter(hx[-1], hy[-1], c=c, marker='^', s=100, edgecolors='black', zorder=4)
-
-    ax.set_title(title)
-    ax.set_xlabel("Grid X")
-    ax.set_ylabel("Grid Y")
-    ax.legend(loc='upper right')
-
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        plt.close(fig)
-    else:
-        plt.show()
 
 
 def main():
@@ -142,7 +108,7 @@ def main():
         os.makedirs(exp_dir)
         print(f"数据将保存至: {exp_dir}")
 
-    current_uavs = config.TASK3_START_UAV_COUNT
+    current_uavs = config.START_UAV_COUNT
     best_avg, best_std = 0.0, 0.0
 
     while current_uavs > 0:
@@ -152,7 +118,7 @@ def main():
             print(
                 f"测试在 N = {current_uavs} 架时未达标 ({success_rate * 100:.1f}% < {config.TARGET_SUCCESS_RATE * 100}%)")
             min_required_uavs = current_uavs + 1
-            if min_required_uavs <= config.TASK3_START_UAV_COUNT:
+            if min_required_uavs <= config.START_UAV_COUNT:
                 print(f"该配置 ({min_required_uavs}架) 的平均耗时: {best_avg:.2f} h (标准差: {best_std:.2f} h)")
 
             print("=" * 40 + "\n")
@@ -160,7 +126,7 @@ def main():
             if failed_record is not None:
                 print("渲染导致不合格的失败轨迹图")
                 plot_trajectory(failed_record[0], failed_record[1], failed_record[2],
-                                f"Failure Case with N={current_uavs} UAVs")
+                                f"Failure Case with N={current_uavs} UAVs", is_caught=False)
             break
 
         best_avg = avg_time
