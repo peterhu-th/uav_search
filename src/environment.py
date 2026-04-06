@@ -54,15 +54,24 @@ class Environment:
     def _init_target(self):
         """初始化目标状态与贝叶斯先验概率"""
         if config.TARGET_INIT_MODE == 'gaussian':
-            cx, cy = config.TARGET_INIT_CENTER
-            self.true_target_x, self.true_target_y = float(cx), float(cy)
-            # 在中心生成一个高斯分布的初始热力云
-            for y in range(config.GRID_H):
-                for x in range(config.GRID_W):
-                    dist_sq = (x - cx)**2 + (y - cy)**2
-                    idx = y * config.GRID_W + x
-                    # 初始方差
-                    self.prob_map[idx] = math.exp(-dist_sq / (2.0 * (config.GAUSSIAN_SIGMA * 6)**2))
+            prior_center_x = np.random.uniform(0, config.GRID_W)
+            prior_center_y = np.random.uniform(0, config.GRID_H)
+            # 定义先验情报的误差范围 (初始分布的标准差)
+            init_sigma = config.GRID_W / 6.0
+
+            tx = np.random.normal(loc=prior_center_x, scale=init_sigma)
+            ty = np.random.normal(loc=prior_center_y, scale=init_sigma)
+
+            self.true_target_x = np.clip(tx, 0, config.GRID_W - 1)
+            self.true_target_y = np.clip(ty, 0, config.GRID_H - 1)
+
+            # 生成先验概率热力图
+            Y, X = np.mgrid[0:config.GRID_H, 0:config.GRID_W]
+
+            # 计算二维高斯分布
+            prob_map = np.exp(-((X - prior_center_x) ** 2 + (Y - prior_center_y) ** 2) / (2 * init_sigma ** 2))
+            self.prob_map = (prob_map / np.sum(prob_map)).flatten()
+            self.prob_map = self.prob_map.astype(np.float32)
         else:
             # Uniform 完全未知
             self.true_target_x = np.random.uniform(0, config.GRID_W)

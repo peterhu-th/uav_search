@@ -5,6 +5,7 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(BASE_DIR, 'config'))
@@ -15,7 +16,7 @@ from environment import Environment
 from uav_controller import UAVFleet
 
 
-def test_uav_count(num_uavs):
+def test_uav_count(num_uavs, save_plots=False):
     """测试特定无人机数量，返回 (成功率, 失败的轨迹记录)"""
     print(f"\n>>> 正在评估 N = {num_uavs} 架无人机 ...")
 
@@ -58,13 +59,19 @@ def test_uav_count(num_uavs):
             target_history.append((env.true_target_x, env.true_target_y))
             failed_record = (fleet.history, target_history, env.prob_map.copy())
 
+        if save_plots:
+            save_dir = os.path.join(BASE_DIR, "data", "min_uavs", f"N_{num_uavs}", str(i))
+            save_path = os.path.join(save_dir, "plot.png")
+            plot_title = f"Task 3: N={num_uavs} Sim={i} [{status}]"
+            plot_trajectory(fleet.history, target_history, env.prob_map.copy(), plot_title, save_path=save_path)
+
     current_success_rate = success_count / config.MC_SIMULATIONS
     print(f"N = {num_uavs} 架限时成功率: {current_success_rate * 100:.1f}%")
 
     return current_success_rate, failed_record
 
 
-def plot_trajectory(fleet_history, target_history, prob_map, title):
+def plot_trajectory(fleet_history, target_history, prob_map, title, save_path=None):
     """绘制全局静态轨迹汇总图 (复用逻辑)"""
     fig, ax = plt.subplots(figsize=(10, 8))
     prob_map_2d = prob_map.reshape((config.GRID_H, config.GRID_W))
@@ -86,19 +93,29 @@ def plot_trajectory(fleet_history, target_history, prob_map, title):
     ax.set_xlabel("Grid X")
     ax.set_ylabel("Grid Y")
     ax.legend(loc='upper right')
-    plt.show()
 
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+    else:
+        plt.show()
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--save', type=str, default='false', choices=['true', 'false'])
+    args = parser.parse_args()
+    save_plots = (args.save.lower() == 'true')
+
     print(f"求解最少无人机数量")
 
     current_uavs = config.TASK3_START_UAV_COUNT
     min_required_uavs = current_uavs
 
     while current_uavs > 0:
-        success_rate, failed_record = test_uav_count(current_uavs)
+        success_rate, failed_record = test_uav_count(current_uavs, save_plots)
 
-        # 只要出现失败情况，立刻停止递减
+        # 失败则停止递减
         if success_rate < config.TARGET_SUCCESS_RATE:
             print("\n" + "=" * 40)
             print(

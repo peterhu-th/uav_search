@@ -5,6 +5,8 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(BASE_DIR, 'config'))
 sys.path.append(os.path.join(BASE_DIR, 'src'))
@@ -46,7 +48,7 @@ def run_single_simulation(sim_id, num_uavs):
     return max_steps * config.DT_HOURS, fleet.history, target_history, env.prob_map.copy(), False
 
 
-def plot_trajectory(fleet_history, target_history, prob_map, title):
+def plot_trajectory(fleet_history, target_history, prob_map, title, save_path=None):
     """绘制全局静态轨迹汇总图"""
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -74,9 +76,19 @@ def plot_trajectory(fleet_history, target_history, prob_map, title):
     ax.set_xlabel("Grid X")
     ax.set_ylabel("Grid Y")
     ax.legend(loc='upper right')
-    plt.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)  # 释放内存，极其重要
+    else:
+        plt.show()
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--save', type=str, default='false', choices=['true', 'false'])
+    args = parser.parse_args()
+    save_plots = (args.save.lower() == 'true')
+
     print(f"计算 {config.TASK2_UAV_COUNT} 架无人机的平均捕获时间")
     print(f"步长 {config.DT_MINUTES} min, 蒙特卡洛次数 {config.MC_SIMULATIONS}")
 
@@ -88,6 +100,13 @@ def main():
 
     for i in range(config.MC_SIMULATIONS):
         time_spent, f_hist, t_hist, p_map, success = run_single_simulation(i, config.TASK2_UAV_COUNT)
+
+        if save_plots:
+            save_dir = os.path.join(BASE_DIR, "data", "search_time", str(i))
+            save_path = os.path.join(save_dir, "plot.png")
+            status_str = "成功" if success else "超时"
+            plot_title = f"Task 2: Sim={i} [{status_str}]"
+            plot_trajectory(f_hist, t_hist, p_map, plot_title, save_path=save_path)
 
         if success:
             successful_times.append(time_spent)

@@ -26,7 +26,6 @@ TARGET_STEP_DIST_KM = TARGET_SPEED_KPH * DT_HOURS
 GAUSSIAN_SIGMA = TARGET_STEP_DIST_KM / GRID_RES_KM * 2.0    # 转化为网格数作为高斯扩散的 sigma
 
 TARGET_INIT_MODE = 'gaussian'                               # 初始分布模式: 'uniform' (完全未知) 或 'gaussian' (先验中心)
-TARGET_INIT_CENTER = (50, 74)                               # 如果是gaussian模式，目标的先验中心点
 TARGET_TRUE_MOTION = 'straight'                             # 目标的机动策略: 'random', 'straight', 'inertia', 'evasive'
 
 
@@ -35,7 +34,7 @@ UAV_SPEED_KPH = 180.0                                       # 巡航速度 (km/h
 UAV_STEP_DIST_KM = UAV_SPEED_KPH * DT_HOURS
 UAV_STEP_GRIDS = UAV_STEP_DIST_KM / GRID_RES_KM             # 无人机每步能飞几格
 
-RADAR_WIDTH_KM = 50                                         # 雷达扫描幅宽 (km)
+RADAR_WIDTH_KM = 30                                         # 雷达扫描幅宽 (km)
 RADAR_RADIUS_GRIDS = (RADAR_WIDTH_KM / 2.0) / GRID_RES_KM   # 雷达半径(网格数)
 PROB_DETECT = 0.95                                          # 探测概率 p_d
 
@@ -45,14 +44,15 @@ UAV_ENTRY_POINTS = [                                        # 无人机切入点
 
 
 # ----------------- 人工势场决策参数 (APF) -----------------
-W_INERTIA = 0.2                 # 惯性权重
+W_INERTIA = 0.4                 # 惯性权重
 C_ATTRACT = 1.0                 # 概率引力系数
 C_REPEL = 10                    # 无人机间斥力系数
 REPEL_DISTANCE_GRIDS = 15       # 斥力生效距离(网格数)
+EDGE_PENALTY_FACTOR = 0.1
 
 # ----------------- 蒙特卡洛仿真参数 -----------------
-MC_SIMULATIONS = 10             # 每次测试运行的蒙特卡洛仿真次数
+MC_SIMULATIONS = 20             # 每次测试运行的蒙特卡洛仿真次数
 MAX_SIMULATION_HOURS = 100.0    # 任务二:最大允许搜索时间
 TASK2_UAV_COUNT = 2             # 任务二:测试的无人机数量
-TASK3_TIME_LIMIT_HOURS = 7.75   # 任务三:时间约束
+TASK3_TIME_LIMIT_HOURS = 7.8   # 任务三:时间约束
 TASK3_START_UAV_COUNT = 8       # 任务三:递减测试的起始无人机数量
