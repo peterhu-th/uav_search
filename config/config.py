@@ -20,7 +20,7 @@ TOTAL_GRIDS = GRID_W * GRID_H
 DT_MINUTES = 6.0               # 仿真时间步长 (min)
 DT_HOURS = DT_MINUTES / 60.0    # 转换为小时，用于速度计算
 
-TARGET_SUCCESS_RATE = 0.95      # 判定搜索成功的概率阈值
+TARGET_SUCCESS_RATE = 0.50      # 判定搜索成功的概率阈值
 PRUNE_THRESHOLD = 1e-8          # 极小概率阈值
 
 
@@ -30,7 +30,7 @@ TARGET_STEP_DIST_KM = TARGET_SPEED_KPH * DT_HOURS
 GAUSSIAN_SIGMA = TARGET_STEP_DIST_KM / GRID_RES_KM * 2.0    # 转化为网格数作为高斯扩散的 sigma
 
 TARGET_INIT_MODE = 'uniform'                                # 初始分布模式: 'uniform' (完全未知) 或 'gaussian' (先验中心)
-TARGET_TRUE_MOTION = 'straight'                             # 目标的机动策略: 'random', 'straight', 'evasive'
+TARGET_TRUE_MOTION = 'evasive'                             # 目标的机动策略: 'random', 'straight', 'evasive'
 
 
 # ----------------- BZK-005 无人机参数 -----------------
@@ -62,7 +62,7 @@ COLLAPSE_FACTOR = 0.3           # 崩塌系数
 
 
 # ----------------- 熵注入策略 -----------------
-ENTROPY_INJECTION_RATE = 0.1
+ENTROPY_INJECTION_RATE = 0.01
 
 
 # ----------------- 蒙特卡洛仿真参数 -----------------
