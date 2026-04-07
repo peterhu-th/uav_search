@@ -30,7 +30,7 @@ TARGET_STEP_DIST_KM = TARGET_SPEED_KPH * DT_HOURS
 GAUSSIAN_SIGMA = TARGET_STEP_DIST_KM / GRID_RES_KM * 2.0    # 转化为网格数作为高斯扩散的 sigma
 
 TARGET_INIT_MODE = 'uniform'                                # 初始分布模式: 'uniform' (完全未知) 或 'gaussian' (先验中心)
-TARGET_TRUE_MOTION = 'random'                             # 目标的机动策略: 'random', 'straight', 'evasive'
+TARGET_TRUE_MOTION = 'straight'                             # 目标的机动策略: 'random', 'straight', 'evasive'
 
 
 # ----------------- BZK-005 无人机参数 -----------------
@@ -48,11 +48,11 @@ UAV_ENTRY_POINTS = [                                        # 无人机切入点
 
 
 # ----------------- 人工势场决策参数 (APF) -----------------
-W_INERTIA = 0.4                 # 惯性权重
+W_INERTIA = 0.2                 # 惯性权重
 C_ATTRACT = 1.0                 # 概率引力系数
-C_REPEL = 20                    # 无人机间斥力系数
+C_REPEL = 15                    # 无人机间斥力系数
 REPEL_DISTANCE_GRIDS = 30       # 斥力生效距离(网格数)
-EDGE_PENALTY_FACTOR = 0.1
+EDGE_PENALTY_FACTOR = 0.2
 
 
 # ----------------- 信任度崩塌策略 -----------------
@@ -62,7 +62,7 @@ COLLAPSE_FACTOR = 0.3           # 崩塌系数
 
 
 # ----------------- 熵注入策略 -----------------
-ENTROPY_INJECTION_RATE = 0.01
+ENTROPY_INJECTION_RATE = 0.1
 
 
 # ----------------- 蒙特卡洛仿真参数 -----------------

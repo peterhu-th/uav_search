@@ -23,7 +23,7 @@ def main():
     print("=" * 40 + "\n")
 
     env = Environment()
-    fleet = UAVFleet(num_uavs=7)
+    fleet = UAVFleet(num_uavs=0)
     target_history = []
 
     plt.ion()
