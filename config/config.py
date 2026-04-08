@@ -30,7 +30,7 @@ TARGET_STEP_DIST_KM = TARGET_SPEED_KPH * DT_HOURS
 GAUSSIAN_SIGMA = TARGET_STEP_DIST_KM / GRID_RES_KM * 2.0    # 转化为网格数作为高斯扩散的 sigma
 
 TARGET_INIT_MODE = 'uniform'                                # 初始分布模式: 'uniform' (完全未知) 或 'gaussian' (先验中心)
-TARGET_TRUE_MOTION = 'evasive'                             # 目标的机动策略: 'random', 'straight', 'evasive'
+TARGET_TRUE_MOTION = 'evasive'                              # 目标的机动策略: 'random', 'straight', 'evasive'
 
 
 # ----------------- BZK-005 无人机参数 -----------------

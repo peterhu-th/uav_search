@@ -4,7 +4,7 @@
 
 ## 1. 目录结构与文件作用
 
-### `src/`
+### `src/` (工具和环境)
 * **`environment.py`**: 环境模型核心。负责维护 2D 概率网格，处理真实目标的机动逻辑，并调用 C++ 底层进行概率更新。
 * **`uav_controller.py`**: 无人机集群控制器。实现人工势场，计算引力和斥力，生成无人机的移动指令。
 * **`bayes_core.cpp`**: C++ 实现的底层计算引擎。包含高斯扩散和雷达扫描的高性能计算逻辑。
@@ -13,9 +13,13 @@
 ### `lib/` (二进制库)
 * **`bayes_core.dll` / `bayes_core.so`**: 由 `bayes_core.cpp` 编译而成的动态链接库，供 Python 调用以提升计算性能。
 
-### `config/`
+### `config/` （配置）
 * **`config.py`**: 全局参数配置文件。包含海域范围、无人机性能、雷达参数、APF 系数及 Monte Carlo 仿真设置。
 
+### `tasks/` (仿真器)
+* **`demo.py`**: 演示性文件。
+* **`search_time.py`**: 两架无人机搜索仿真。
+* **`min_uavs.py`**: 限时搜索任务仿真。
 ---
 
 ## 2. 核心算法说明
@@ -64,3 +68,18 @@
 
 ### 硬件建议
 * 由于涉及大规模网格计算和蒙特卡洛多线程运行建议，推荐使用 8GB 以上内存。
+
+## 5. 仿真运行方法
+
+### 参数调整
+* **config/config.py**: 修改配置。论文中用到的修改有：
+  * 敌方目标参数: TARGET_INIT_MODE, TARGET_TRUE_MOTION
+  * 人工势场决策参数: C_REPEL, REPEL_DISTANCE_GRIDS
+  * 熵注入策略: ENTROPY_INJECTION_RATE
+
+### 程序运行
+```cmd
+python .\tasks\ demo.py
+python .\tasks\ search_time.py --save false
+python .\tasks\ min_uavs.py --save false
+```
